@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FTC Team Stats Viewer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2em;
+      background-color: #f8f9fa;
+    }
+    h1 {
+      color: #333;
+    }
+    pre {
+      background: #fff;
+      padding: 1em;
+      border: 1px solid #ccc;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>FTC Scout: Match Statistics</h1>
+  <label>Team: <input type="number" id="team" value="12345"></label>
+  <label>Event Code: <input type="text" id="eventCode" value="NYQ"></label>
+  <label>Season: <input type="number" id="season" value="2024"></label>
+  <button onclick="generateStats()">Generate Stats</button>
+  <pre id="output">Waiting for input...</pre>
+
+  <script>
+    async function generateStats() {
+      const team = document.getElementById('team').value;
+      const eventCode = document.getElementById('eventCode').value;
+      const season = document.getElementById('season').value;
+      const output = document.getElementById('output');
+      output.textContent = "Fetching data...";
+
+      try {
+        // Get all team matches at this event
+        const teamMatchRes = await fetch(`https://api.ftcscout.org/rest/v1/teams/${season}/${team}/events/${eventCode}/matches`);
+        const teamMatches = await teamMatchRes.json();
+
+        // Get event-wide match details
+        const matchDetailsRes = await fetch(`https://api.ftcscout.org/rest/v1/events/${season}/${eventCode}/matches`);
+        const allMatches = await matchDetailsRes.json();
+
+        let totalWins = 0, totalLosses = 0, totalTies = 0;
+        let totalScores = [], autoScores = [], teleOpScores = [];
+        let highScoreQ = 0, highScoreP = 0;
+        let playoffCount = 0, playoffWins = 0, playoffLosses = 0, playoffTies = 0;
+
+        const matchLabel = (id) => {
+          const base = Math.floor(id / 1000) - 20;
+          const suffix = id % 1000 === 2 ? ".2" : "";
+          return (id >= 21001 && id <= 40002) ? `M-${base}${suffix}` : `Q-${id}`;
+        };
+
+        const log = [];
+
+        for (const match of teamMatches) {
+          const { id: matchId, alliance, allianceRole, surrogate, dq, onField } = match;
+          const matchData = allMatches.find(m => m.id === matchId);
+          if (!matchData) continue;
+
+          const label = matchLabel(matchId);
+          const redScore = matchData.scores.red.totalPoints;
+          const blueScore = matchData.scores.blue.totalPoints;
+          const autoPoints = matchData.scores[alliance.toLowerCase()].autoPoints;
+          const telePoints = matchData.scores[alliance.toLowerCase()].dcPoints;
+          const total = matchData.scores[alliance.toLowerCase()].totalPoints;
+
+          let winner = "";
+          if (redScore > blueScore) winner = "Winner: Red";
+          else if (blueScore > redScore) winner = "Winner: Blue";
+          else winner = "Tie";
+
+          const summary = `${label} ${onField ? "" : "(Did Not Play)"} ${surrogate ? "Surrogate" : ""} ${dq ? "Disqualified" : ""}| [Blue: ${blueScore}] Red: ${redScore} | ${winner}`;
+          log.push(summary);
+
+          if (label.startsWith("Q")) {
+            if (onField) {
+              totalScores.push(total);
+              autoScores.push(autoPoints);
+              teleOpScores.push(telePoints);
+              highScoreQ = Math.max(highScoreQ, total);
+
+              if ((alliance === "Red" && winner === "Winner: Red") ||
+                  (alliance === "Blue" && winner === "Winner: Blue")) {
+                totalWins++;
+              } else if (winner === "Tie") {
+                totalTies++;
+              } else {
+                totalLosses++;
+              }
+            }
+          } else {
+            playoffCount++;
+            if (onField) {
+              totalScores.push(total);
+              autoScores.push(autoPoints);
+              teleOpScores.push(telePoints);
+              highScoreP = Math.max(highScoreP, total);
+
+              if ((alliance === "Red" && winner === "Winner: Red") ||
+                  (alliance === "Blue" && winner === "Winner: Blue")) {
+                playoffWins++;
+              } else if (winner === "Tie") {
+                playoffTies++;
+              } else {
+                playoffLosses++;
+              }
+            }
+          }
+        }
+
+        const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2) : "N/A";
+        const winRate = (w, t) => (w + t ? ((w / (w + t)) * 100).toFixed(2) : "0.00");
+
+        output.textContent = `
+Team ${team} @ ${eventCode} (${season})
+
+=== Qualification Matches ===
+W-L-T: ${totalWins}-${totalLosses}-${totalTies}
+High Score: ${highScoreQ}
+Avg Total: ${avg(totalScores)}
+Avg Auto: ${avg(autoScores)}
+Avg TeleOp: ${avg(teleOpScores)}
+Win Rate: ${winRate(totalWins, totalLosses + totalTies)}%
+
+=== Playoff Matches ===
+W-L-T: ${playoffWins}-${playoffLosses}-${playoffTies}
+High Score: ${highScoreP}
+Playoff Win Rate: ${winRate(playoffWins, playoffLosses + playoffTies)}%
+
+=== Match Log ===
+${log.join("\n")}
+        `.trim();
+      } catch (err) {
+        output.textContent = "Error fetching or processing data: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
