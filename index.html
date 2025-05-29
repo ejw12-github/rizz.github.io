@@ -7,20 +7,35 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 2rem;
+      margin: 0;
       background: #121212;
       color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 2rem;
     }
     h1, h2 {
       color: #ffffff;
+      text-align: center;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 1rem;
     }
     input, button {
       padding: 0.5rem;
-      margin: 0.25rem;
+      margin: 0.5rem;
       background: #1e1e1e;
       color: #f0f0f0;
       border: 1px solid #333;
       border-radius: 4px;
+      width: 250px;
+      text-align: center;
     }
     button {
       cursor: pointer;
@@ -32,12 +47,15 @@
     #results {
       margin-top: 1.5rem;
       background: #1e1e1e;
-      padding: 1rem;
+      padding: 1rem 2rem;
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      max-width: 500px;
+      text-align: center;
     }
     ul {
-      padding-left: 1.2rem;
+      list-style-type: none;
+      padding-left: 0;
     }
     li {
       margin-bottom: 0.5rem;
@@ -46,9 +64,8 @@
 </head>
 <body>
   <h1>FTC Team Scouting</h1>
-  <div>
-    <label>Username: <input type="text" id="username" /></label><br/>
-    <label>Team Number: <input type="number" id="teamNumber" /></label>
+  <div class="input-group">
+    <input type="number" id="teamNumber" placeholder="Enter FTC team number" />
     <button onclick="getTeamInsights()">Get Insights</button>
   </div>
   <div id="results"></div>
@@ -69,17 +86,14 @@
     }
 
     async function getTeamInsights() {
-      const username = document.getElementById("username").value.trim();
       const teamNumber = document.getElementById("teamNumber").value.trim();
       const results = document.getElementById("results");
       results.innerHTML = "";
 
-      if (!username || !teamNumber) {
-        alert("Please enter both username and team number.");
+      if (!teamNumber) {
+        alert("Please enter a team number.");
         return;
       }
-
-      localStorage.setItem("scoutingUsername", username);
 
       const query = `
         query {
@@ -135,33 +149,43 @@
         const { name: eventName } = mostRecent.event;
         const { opr, dev } = mostRecent.stats;
 
+        const autoSpecimen = nonNegative(opr.autoSpecimenPoints);
+        const teleopSpecimen = nonNegative(opr.dcSpecimenPoints);
+        const endgame = nonNegative(opr.dcSamplePoints) + nonNegative(opr.autoSamplePoints) + nonNegative(opr.dcParkPoints);
+
+        const totalPoints = nonNegative(opr.totalPointsNp);
+        const specimenDeviation = nonNegative(dev.dcSpecimenPoints) + nonNegative(dev.autoSpecimenPoints);
+        const sampleDeviation = nonNegative(dev.dcSamplePoints) + nonNegative(dev.autoSamplePoints);
+        const parkDeviation = nonNegative(dev.dcParkPoints);
+
         function specimenInsight() {
-          const points = nonNegative(opr.dcSpecimenPoints) + nonNegative(opr.autoSpecimenPoints);
-          const deviation = nonNegative(dev.dcSpecimenPoints) + nonNegative(dev.autoSpecimenPoints);
-          const avg = points / 10, devVal = deviation / 10;
-          const label = consistencyLabel(deviation);
-          return `${label} ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} specimens per match`;
+          const avg = (autoSpecimen + teleopSpecimen) / 10;
+          const devVal = specimenDeviation / 10;
+          return `${consistencyLabel(specimenDeviation)} ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} specimens per match`;
         }
 
         function sampleInsight() {
           const points = nonNegative(opr.dcSamplePoints) + nonNegative(opr.autoSamplePoints);
-          const deviation = nonNegative(dev.dcSamplePoints) + nonNegative(dev.autoSamplePoints);
-          const avg = points / 8, devVal = deviation / 8;
-          const label = consistencyLabel(deviation);
-          return `${label} ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} samples per match`;
+          const deviation = sampleDeviation;
+          const avg = points / 8;
+          const devVal = deviation / 8;
+          return `${consistencyLabel(deviation)} ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} samples per match`;
         }
 
         function parkInsight() {
           const points = nonNegative(opr.dcParkPoints);
-          const deviation = nonNegative(dev.dcParkPoints);
-          const label = consistencyLabel(deviation);
+          const deviation = parkDeviation;
           const level = points < 10 ? "Park" : points < 20 ? "Level 2 hang" : "Level 3 hang";
-          return `${label} ${level}`;
+          return `${consistencyLabel(deviation)} ${level}`;
         }
 
         results.innerHTML = `
           <h2>Insights for Team ${teamNumber} (${eventName || "Unknown Event"})</h2>
           <ul>
+            <li><strong>OPR - Total:</strong> ${totalPoints.toFixed(1)}</li>
+            <li><strong>OPR - Auto Specimen:</strong> ${autoSpecimen.toFixed(1)}</li>
+            <li><strong>OPR - TeleOp Specimen:</strong> ${teleopSpecimen.toFixed(1)}</li>
+            <li><strong>OPR - Endgame:</strong> ${endgame.toFixed(1)}</li>
             <li>${specimenInsight()}</li>
             <li>${sampleInsight()}</li>
             <li>${parkInsight()}</li>
@@ -171,11 +195,6 @@
         results.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
       }
     }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const saved = localStorage.getItem("scoutingUsername");
-      if (saved) document.getElementById("username").value = saved;
-    });
   </script>
 </body>
 </html>
