@@ -13,20 +13,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
       min-height: 100vh;
       padding: 2rem;
     }
-    h1, h2 {
-      color: #ffffff;
+
+    h1 {
       text-align: center;
+      margin-bottom: 2rem;
     }
+
     .input-group {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 1rem;
+      margin-bottom: 2rem;
     }
+
     input, button {
       padding: 0.5rem;
       margin: 0.5rem;
@@ -37,27 +39,34 @@
       width: 250px;
       text-align: center;
     }
-    button {
-      cursor: pointer;
-      transition: background 0.2s ease;
-    }
+
     button:hover {
-      background: #333333;
+      background: #333;
     }
-    #results {
-      margin-top: 1.5rem;
+
+    .box {
       background: #1e1e1e;
-      padding: 1rem 2rem;
+      padding: 1rem 1.5rem;
+      margin: 1rem 0;
       border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      width: 90%;
       max-width: 500px;
-      text-align: center;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
     }
-    ul {
+
+    .box h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      border-bottom: 1px solid #444;
+      padding-bottom: 0.5rem;
+    }
+
+    .box ul {
       list-style-type: none;
       padding-left: 0;
     }
-    li {
+
+    .box li {
       margin-bottom: 0.5rem;
     }
   </style>
@@ -95,104 +104,129 @@
         return;
       }
 
-      const query = `
-        query {
-          teamByNumber(number: ${teamNumber}) {
-            events(season: 2024) {
-              event {
-                name
-                started
-                end
-              }
-              stats {
-                ... on TeamEventStats2024 {
-                  opr {
-                    totalPointsNp
-                    autoSpecimenPoints
-                    dcSpecimenPoints
-                    dcSamplePoints
-                    autoSamplePoints
-                    dcParkPoints
-                  }
-                  dev {
-                    totalPointsNp
-                    dcSpecimenPoints
-                    autoSpecimenPoints
-                    dcSamplePoints
-                    autoSamplePoints
-                    dcParkPoints
+      try {
+        // Get team name
+        const nameQuery = `
+          query {
+            teamByNumber(number: ${teamNumber}) {
+              name
+            }
+          }
+        `;
+        const nameResp = await fetch("https://api.ftcscout.org/graphql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: nameQuery })
+        });
+        const nameJson = await nameResp.json();
+        const teamName = nameJson?.data?.teamByNumber?.name || "Unknown Team";
+
+        // Get team stats
+        const statsQuery = `
+          query {
+            teamByNumber(number: ${teamNumber}) {
+              events(season: 2024) {
+                event {
+                  end
+                }
+                stats {
+                  ... on TeamEventStats2024 {
+                    opr {
+                      totalPointsNp
+                      autoSpecimenPoints
+                      dcSpecimenPoints
+                      dcSamplePoints
+                      autoSamplePoints
+                      dcParkPoints
+                    }
+                    dev {
+                      totalPointsNp
+                      dcSpecimenPoints
+                      autoSpecimenPoints
+                      dcSamplePoints
+                      autoSamplePoints
+                      dcParkPoints
+                    }
                   }
                 }
               }
             }
           }
-        }
-      `;
-
-      try {
-        const response = await fetch("https://api.ftcscout.org/graphql", {
+        `;
+        const statsResp = await fetch("https://api.ftcscout.org/graphql", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query })
+          body: JSON.stringify({ query: statsQuery })
         });
-        const json = await response.json();
+        const statsJson = await statsResp.json();
 
-        const events = json?.data?.teamByNumber?.events || [];
+        const events = statsJson?.data?.teamByNumber?.events || [];
         const validEvents = events.filter(e => e.stats?.opr && e.stats?.dev);
 
         if (validEvents.length === 0) {
-          results.innerHTML = "<p>No valid events with stats found for 2024.</p>";
+          results.innerHTML = "<div class='box'><p>No valid events with stats found for 2024.</p></div>";
           return;
         }
 
         const mostRecent = validEvents.sort((a, b) => (b.event.end || "").localeCompare(a.event.end || ""))[0];
-        const { name: eventName } = mostRecent.event;
         const { opr, dev } = mostRecent.stats;
 
-        const autoSpecimen = nonNegative(opr.autoSpecimenPoints);
-        const teleopSpecimen = nonNegative(opr.dcSpecimenPoints);
-        const endgame = nonNegative(opr.dcSamplePoints) + nonNegative(opr.autoSamplePoints) + nonNegative(opr.dcParkPoints);
+        // Calculate OPRs
+        const totalOPR = nonNegative(opr.totalPointsNp);
+        const autoOPR = nonNegative(opr.autoSpecimenPoints);
+        const teleopOPR = nonNegative(opr.dcSpecimenPoints);
+        const endgameOPR = nonNegative(opr.dcSamplePoints) + nonNegative(opr.autoSamplePoints) + nonNegative(opr.dcParkPoints);
 
-        const totalPoints = nonNegative(opr.totalPointsNp);
-        const specimenDeviation = nonNegative(dev.dcSpecimenPoints) + nonNegative(dev.autoSpecimenPoints);
-        const sampleDeviation = nonNegative(dev.dcSamplePoints) + nonNegative(dev.autoSamplePoints);
-        const parkDeviation = nonNegative(dev.dcParkPoints);
+        // Consistency Insights
+        const specimenDev = nonNegative(dev.dcSpecimenPoints) + nonNegative(dev.autoSpecimenPoints);
+        const sampleDev = nonNegative(dev.dcSamplePoints) + nonNegative(dev.autoSamplePoints);
+        const parkDev = nonNegative(dev.dcParkPoints);
 
         function specimenInsight() {
-          const avg = (autoSpecimen + teleopSpecimen) / 10;
-          const devVal = specimenDeviation / 10;
-          return `${consistencyLabel(specimenDeviation)} ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} specimens per match`;
+          const avg = (autoOPR + teleopOPR) / 10;
+          const devVal = specimenDev / 10;
+          return `${consistencyLabel(specimenDev)}: ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} specimens per match`;
         }
 
         function sampleInsight() {
           const points = nonNegative(opr.dcSamplePoints) + nonNegative(opr.autoSamplePoints);
-          const deviation = sampleDeviation;
           const avg = points / 8;
-          const devVal = deviation / 8;
-          return `${consistencyLabel(deviation)} ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} samples per match`;
+          const devVal = sampleDev / 8;
+          return `${consistencyLabel(sampleDev)}: ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} samples per match`;
         }
 
         function parkInsight() {
           const points = nonNegative(opr.dcParkPoints);
-          const deviation = parkDeviation;
           const level = points < 10 ? "Park" : points < 20 ? "Level 2 hang" : "Level 3 hang";
-          return `${consistencyLabel(deviation)} ${level}`;
+          return `${consistencyLabel(parkDev)}: ${level}`;
         }
 
         results.innerHTML = `
-          <h2>Insights for Team ${teamNumber} (${eventName || "Unknown Event"})</h2>
-          <ul>
-            <li><strong>OPR - Total:</strong> ${totalPoints.toFixed(1)}</li>
-            <li><strong>OPR - Auto Specimen:</strong> ${autoSpecimen.toFixed(1)}</li>
-            <li><strong>OPR - TeleOp Specimen:</strong> ${teleopSpecimen.toFixed(1)}</li>
-            <li><strong>OPR - Endgame:</strong> ${endgame.toFixed(1)}</li>
-            <li>${specimenInsight()}</li>
-            <li>${sampleInsight()}</li>
-            <li>${parkInsight()}</li>
-          </ul>
+          <div class="box">
+            <h2>Team ${teamNumber} – ${teamName}</h2>
+          </div>
+
+          <div class="box">
+            <h2>OPR Breakdown</h2>
+            <ul>
+              <li><strong>Total:</strong> ${totalOPR.toFixed(1)}</li>
+              <li><strong>Auto Specimen:</strong> ${autoOPR.toFixed(1)}</li>
+              <li><strong>TeleOp Specimen:</strong> ${teleopOPR.toFixed(1)}</li>
+              <li><strong>Endgame:</strong> ${endgameOPR.toFixed(1)}</li>
+            </ul>
+          </div>
+
+          <div class="box">
+            <h2>Consistency Insights</h2>
+            <ul>
+              <li>${specimenInsight()}</li>
+              <li>${sampleInsight()}</li>
+              <li>${parkInsight()}</li>
+            </ul>
+          </div>
         `;
       } catch (error) {
-        results.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
+        results.innerHTML = `<div class='box'><p style="color:red;">Error: ${error.message}</p></div>`;
       }
     }
   </script>
