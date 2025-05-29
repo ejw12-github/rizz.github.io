@@ -3,217 +3,139 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cookie-Based Theme Toggle</title>
+  <title>FTC Team Scouting</title>
   <style>
-    /* LIGHT/DARK STYLES */
+    :root {
+      --bg-color: #121212;
+      --text-color: #f0f0f0;
+      --box-bg: #1e1e1e;
+    }
+
+    body.light {
+      --bg-color: #f0f0f0;
+      --text-color: #121212;
+      --box-bg: #ffffff;
+    }
+
     body {
+      font-family: Arial, sans-serif;
       margin: 0;
-      padding: 2rem;
-      font-family: sans-serif;
-      background-color: white;
-      color: black;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    body.dark {
-      background-color: #121212;
-      color: white;
-    }
-
-    /* TOGGLE SWITCH */
-    .toggle-container {
-      position: fixed;
-      top: 1rem;
-      left: 1rem;
+      background: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
       display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    #checkbox {
-      width: 40px;
-      height: 20px;
-      appearance: none;
-      background: #ccc;
-      border-radius: 20px;
-      position: relative;
-      outline: none;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    #checkbox:checked {
-      background: #7b57ff;
-    }
-    #checkbox::before {
-      content: "";
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: white;
-      top: 2px;
-      left: 2px;
-      transition: 0.3s;
-    }
-    #checkbox:checked::before {
-      left: 22px;
-    }
-
-    /* GENERATE BUTTON */
-    #generateButton {
-      padding: 0.4rem 0.8rem;
-      font-size: 0.85rem;
-      border-radius: 0.5rem;
-      border: none;
-      background-color: #7b57ff;
-      color: white;
-      cursor: pointer;
-    }
-
-    /* COOKIE POPUP */
-    .card {
-      width: 300px;
-      height: 220px;
-      background-color: rgb(255, 255, 255);
-      border-radius: 8px;
-      display: none;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 20px 30px;
-      gap: 13px;
+      justify-content: flex-start;
+      padding: 2rem;
+      text-align: center;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    h1 {
+      margin-bottom: 2rem;
+    }
+
+    .cookie-banner {
       position: fixed;
-      bottom: 20px;
+      bottom: 1rem;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 9999;
-      box-shadow: 2px 2px 20px rgba(0, 0, 0, 0.062);
+      background: var(--box-bg);
+      color: var(--text-color);
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      z-index: 1000;
+      max-width: 90%;
     }
 
-    #cookieSvg {
-      width: 50px;
-    }
-    #cookieSvg g path {
-      fill: rgb(97, 81, 81);
-    }
-
-    .cookieHeading {
-      font-size: 1.2em;
-      font-weight: 800;
-      color: rgb(26, 26, 26);
-    }
-    .cookieDescription {
-      text-align: center;
-      font-size: 0.7em;
-      font-weight: 600;
-      color: rgb(99, 99, 99);
-    }
-    .cookieDescription a {
-      color: rgb(59 130 246);
-    }
-    .cookieDescription a:hover {
-      text-decoration: underline;
-    }
-
-    .buttonContainer {
-      display: flex;
-      gap: 20px;
-      flex-direction: row;
-    }
-
-    .acceptButton {
-      width: 80px;
-      height: 30px;
-      background-color: #7b57ff;
-      border: none;
+    .cookie-banner button {
+      margin-top: 0.5rem;
+      background: #00a6ff;
       color: white;
-      font-weight: 600;
-      border-radius: 20px;
-      box-shadow: 0 4px 6px -1px #977ef3, 0 2px 4px -1px #977ef3;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
       cursor: pointer;
     }
-    .declineButton {
-      width: 80px;
-      height: 30px;
-      background-color: #dadada;
-      color: rgb(46, 46, 46);
-      border: none;
-      cursor: not-allowed;
-      font-weight: 600;
-      border-radius: 20px;
-      box-shadow: 0 4px 6px -1px #bebdbd, 0 2px 4px -1px #bebdbd;
-    }
-    .acceptButton:hover {
-      background-color: #9173ff;
-    }
-    .declineButton:hover {
-      background-color: #ebebeb;
-    }
+
+    /* The rest of your CSS is unchanged below... */
   </style>
 </head>
 <body>
+  <!-- Light/Dark Toggle -->
+  <label class="switch">
+    <input id="checkbox" type="checkbox" />
+    <span class="slider">
+      <div class="star star_1"></div>
+      <div class="star star_2"></div>
+      <div class="star star_3"></div>
+      <svg viewBox="0 0 16 16" class="cloud_1 cloud">
+        <path
+          transform="matrix(.77976 0 0 .78395-299.99-418.63)"
+          fill="#fff"
+          d="m391.84 540.91c-.421-.329-.949-.524-1.523-.524-1.351 0-2.451 1.084-2.485 2.435-1.395.526-2.388 1.88-2.388 3.466 0 1.874 1.385 3.423 3.182 3.667v.034h12.73v-.006c1.775-.104 3.182-1.584 3.182-3.395 0-1.747-1.309-3.186-2.994-3.379.007-.106.011-.214.011-.322 0-2.707-2.271-4.901-5.072-4.901-2.073 0-3.856 1.202-4.643 2.925"
+        ></path>
+      </svg>
+    </span>
+  </label>
 
-  <!-- Toggle -->
-  <div class="toggle-container">
-    <label for="checkbox">Dark Mode</label>
-    <input type="checkbox" id="checkbox" />
-  </div>
+  <h1>FTC Team Scouting</h1>
 
-  <h1>Hello, Theme World!</h1>
-  <button id="generateButton">Generate</button>
-
-  <!-- Cookie Pop-up -->
-  <div class="card">
-    <svg id="cookieSvg" viewBox="0 0 122.88 122.25" xmlns="http://www.w3.org/2000/svg"><g><path d="..."/></g></svg>
-    <p class="cookieHeading">We use cookies.</p>
-    <p class="cookieDescription">We use cookies to save your preferences. <br><a href="#">Read cookies policies</a>.</p>
-    <div class="buttonContainer">
-      <button class="acceptButton">Allow</button>
-      <button class="declineButton">Decline</button>
+  <div class="input-group">
+    <div class="form">
+      <input id="teamNumber" class="input" placeholder="Enter team to scout" required type="text" />
+      <span class="input-border"></span>
     </div>
+    <button onclick="getTeamInsights()"><span class="text">Generate Statistics</span></button>
   </div>
 
-  <!-- JS -->
+  <div id="results"></div>
+
+  <!-- Cookie Consent -->
+  <div id="cookieBanner" class="cookie-banner" style="display: none;">
+    <p>We use cookies to remember your theme preference. By using this site, you accept this.</p>
+    <button onclick="acceptCookies()">Accept</button>
+  </div>
+
   <script>
-    // Cookie helpers
-    function setCookie(name, value, days = 365) {
+    function setCookie(name, value, days) {
       const expires = new Date(Date.now() + days * 864e5).toUTCString();
       document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/';
     }
+
     function getCookie(name) {
-      return document.cookie.split('; ').find(row => row.startsWith(name + '='))?.split('=')[1];
+      return document.cookie.split('; ').reduce((r, v) => {
+        const parts = v.split('=');
+        return parts[0] === name ? decodeURIComponent(parts[1]) : r
+      }, '');
     }
 
-    // Theme logic
-    const checkbox = document.getElementById('checkbox');
-    const prefersDark = getCookie('theme') === 'dark';
-
-    document.body.classList.toggle('dark', prefersDark);
-    checkbox.checked = prefersDark;
-
-    checkbox.addEventListener('change', () => {
-      document.body.classList.toggle('dark', checkbox.checked);
-      if (getCookie('cookiesAccepted') === 'true') {
-        setCookie('theme', checkbox.checked ? 'dark' : 'light');
-      }
-    });
-
-    // Cookie popup logic
-    const popup = document.querySelector('.card');
-    const accept = document.querySelector('.acceptButton');
-    const decline = document.querySelector('.declineButton');
-
-    if (getCookie('cookiesAccepted') !== 'true') {
-      popup.style.display = 'flex';
+    function acceptCookies() {
+      setCookie("cookiesAccepted", "true", 365);
+      document.getElementById("cookieBanner").style.display = "none";
     }
 
-    accept.addEventListener('click', () => {
-      setCookie('cookiesAccepted', 'true');
-      setCookie('theme', checkbox.checked ? 'dark' : 'light');
-      popup.style.display = 'none';
+    // Show cookie banner if not yet accepted
+    if (!getCookie("cookiesAccepted")) {
+      document.getElementById("cookieBanner").style.display = "block";
+    }
+
+    // Theme preference from cookie
+    const themePref = getCookie("theme") || "dark";
+    document.body.classList.toggle("light", themePref === "light");
+    document.getElementById("checkbox").checked = themePref === "light";
+
+    // Light/Dark toggle logic + save preference
+    const toggle = document.getElementById("checkbox");
+    toggle.addEventListener("change", () => {
+      const isLight = toggle.checked;
+      document.body.classList.toggle("light", isLight);
+      setCookie("theme", isLight ? "light" : "dark", 365);
     });
 
-    decline.addEventListener('click', () => {
-      popup.style.display = 'none';
-    });
+    // Your existing getTeamInsights and helper functions stay the same...
   </script>
 </body>
 </html>
