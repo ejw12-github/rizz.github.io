@@ -3,449 +3,176 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FTC Team Stats</title>
+  <title>FTC OPR Checker</title>
   <style>
-    :root {
-      --bg-color: #121212;
-      --text-color: #f0f0f0;
-      --box-bg: #1e1e1e;
-    }
-
-    body.light {
-      --bg-color: #f0f0f0;
-      --text-color: #121212;
-      --box-bg: #ffffff;
-    }
-
     body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background: var(--bg-color);
-      color: var(--text-color);
-      min-height: 100vh;
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
       padding: 2rem;
-      text-align: center;
-      transition: background 0.3s, color 0.3s;
     }
 
     h1 {
-      margin-bottom: 2rem;
+      color: #bb86fc;
     }
 
-    /* Light/Dark Switch */
-    .switch {
-      font-size: 17px;
-      position: absolute;
-      top: 1rem;
-      left: 1rem;
-      width: 4em;
-      height: 2.2em;
-      border-radius: 30px;
-      z-index: 999;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #2a2a2a;
-      transition: 0.4s;
-      border-radius: 30px;
-      overflow: hidden;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 1.2em;
-      width: 1.2em;
-      border-radius: 20px;
-      left: 0.5em;
-      bottom: 0.5em;
-      transition: 0.4s;
-      transition-timing-function: cubic-bezier(0.81, -0.04, 0.38, 1.5);
-      box-shadow: inset 8px -4px 0px 0px #fff;
-    }
-
-    .switch input:checked + .slider {
-      background-color: #00a6ff;
-    }
-
-    .switch input:checked + .slider:before {
-      transform: translateX(1.8em);
-      box-shadow: inset 15px -4px 0px 15px #ffcf48;
-    }
-
-    .star {
-      background-color: #fff;
-      border-radius: 50%;
-      position: absolute;
-      width: 5px;
-      transition: all 0.4s;
-      height: 5px;
-    }
-
-    .star_1 { left: 2.5em; top: 0.5em; }
-    .star_2 { left: 2.2em; top: 1.2em; }
-    .star_3 { left: 3em; top: 0.9em; }
-
-    .switch input:checked ~ .slider .star {
-      opacity: 0;
-    }
-
-    .cloud {
-      width: 3.5em;
-      position: absolute;
-      bottom: -1.4em;
-      left: -1.1em;
-      opacity: 0;
-      transition: all 0.4s;
-    }
-
-    .switch input:checked ~ .slider .cloud {
-      opacity: 1;
-    }
-
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-
-    .form {
-      --width-of-input: 250px;
-      position: relative;
-      width: var(--width-of-input);
-    }
-
-    .input {
-      color: var(--text-color);
-      font-size: 0.9rem;
-      background-color: transparent;
-      width: 100%;
-      padding-inline: 0.5em;
-      padding-block: 0.7em;
+    input, button {
+      padding: 10px;
+      margin: 1rem 0;
+      font-size: 1rem;
+      border-radius: 5px;
       border: none;
-      border-bottom: 1px solid rgba(221, 221, 221, 0.39);
-      text-align: center;
     }
 
-    .input-border {
-      position: absolute;
-      background: #5891ff;
-      width: 0%;
-      height: 2px;
-      bottom: 0;
-      left: 0;
-      transition: 0.3s;
-    }
-
-    input:hover {
-      background: #4985e01f;
-    }
-
-    input:focus {
-      outline: none;
-    }
-
-    input:focus ~ .input-border {
-      width: 100%;
+    input {
+      background-color: #1f1f1f;
+      color: white;
     }
 
     button {
-      align-items: center;
-      background-image: linear-gradient(144deg, #af40ff, #5b42f3 50%, #00ddeb);
-      border: 0;
-      border-radius: 8px;
-      color: #fff;
-      font-size: 14px;
-      margin-top: 1rem;
-      padding: 2px;
-      display: flex;
+      background-color: #03dac5;
+      color: black;
       cursor: pointer;
-      transition: all 0.3s;
-      min-width: 120px;
     }
 
-    button span {
-      background-color: rgb(5, 6, 45);
-      padding: 10px 16px;
-      border-radius: 6px;
-      width: 100%;
-      transition: 300ms;
+    button:hover {
+      background-color: #00bfa5;
     }
 
-    button:hover span {
-      background: none;
-    }
-
-    button:active {
-      transform: scale(0.95);
-    }
-
-    .box {
-      background: var(--box-bg);
-      padding: 1rem 1.5rem;
-      margin: 1rem 0;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
-      transition: background 0.3s;
-    }
-
-    .box h2 {
-      margin-top: 0;
-      font-size: 1.2rem;
-      border-bottom: 1px solid #444;
-      padding-bottom: 0.5rem;
-    }
-
-    .box ul {
-      list-style-type: none;
-      padding-left: 0;
-    }
-
-    .box li {
-      margin-bottom: 0.5rem;
-    }
-
-    /* Cookie Banner */
-    #cookie-banner {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: var(--box-bg);
-      color: var(--text-color);
+    .result {
+      background-color: #1e1e1e;
       padding: 1rem;
-      text-align: center;
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.4);
-      z-index: 9999;
-      display: none;
-    }
-
-    #cookie-banner button {
-      margin-left: 1rem;
-      font-size: 0.9rem;
-      padding: 8px 14px;
-      border-radius: 6px;
-      background-color: #5b42f3;
-      color: white;
-      border: none;
-    }
-
-    #cookie-banner button:hover {
-      background-color: #4a36cc;
-    }
-
-    /* Popup Notification */
-    #popup {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--box-bg);
-      color: var(--text-color);
-      padding: 1rem 1.5rem;
       border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
-      z-index: 10000;
-      display: none;
-      animation: fadeInOut 3s ease-in-out;
-    }
-
-    @keyframes fadeInOut {
-      0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-      10% { opacity: 1; transform: translateX(-50%) translateY(0); }
-      90% { opacity: 1; transform: translateX(-50%) translateY(0); }
-      100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+      margin-top: 1.5rem;
+      width: 100%;
+      max-width: 600px;
+      word-wrap: break-word;
     }
   </style>
 </head>
 <body>
-  <!-- Light/Dark Toggle -->
-  <label class="switch">
-    <input id="checkbox" type="checkbox" checked />
-    <span class="slider">
-      <div class="star star_1"></div>
-      <div class="star star_2"></div>
-      <div class="star star_3"></div>
-      <svg viewBox="0 0 16 16" class="cloud_1 cloud">
-        <path transform="matrix(.77976 0 0 .78395-299.99-418.63)" fill="#fff"
-          d="m391.84 540.91c-.421-.329-.949-.524-1.523-.524-1.351 0-2.451 1.084-2.485 2.435-1.395.526-2.388 1.88-2.388 3.466 0 1.874 1.385 3.423 3.182 3.667v.034h12.73v-.006c1.775-.104 3.182-1.584 3.182-3.395 0-1.747-1.309-3.186-2.994-3.379.007-.106.011-.214.011-.322 0-2.707-2.271-4.901-5.072-4.901-2.073 0-3.856 1.202-4.643 2.925"/>
-      </svg>
-    </span>
-  </label>
-
-  <h1>FTC Team Scouting</h1>
-
-  <div class="input-group">
-    <div class="form">
-      <input id="teamNumber" class="input" placeholder="Enter team to scout" required type="text" />
-      <span class="input-border"></span>
-    </div>
-    <button onclick="getTeamInsights()"><span class="text">Generate Statistics</span></button>
-  </div>
-
-  <div id="results"></div>
-  <div id="cookie-banner">
-    This website uses cookies to enhance your experience.
-    <button onclick="acceptCookies()">Accept</button>
-  </div>
-
-  <!-- Popup Message -->
-  <div id="popup">Team statistics loaded successfully!</div>
+  <h1>FTC Best OPR Checker</h1>
+  <input type="number" id="teamInput" placeholder="Enter team number" />
+  <button onclick="checkOPR()">Check OPR</button>
+  <div id="result" class="result" style="display:none;"></div>
 
   <script>
-    const toggle = document.getElementById("checkbox");
-    toggle.addEventListener("change", () => {
-      document.body.classList.toggle("light", toggle.checked);
-    });
+    async function checkOPR() {
+      const teamNumber = parseInt(document.getElementById('teamInput').value);
+      const resultBox = document.getElementById('result');
+      resultBox.style.display = 'block';
+      resultBox.innerHTML = 'Loading...';
 
-    function acceptCookies() {
-      localStorage.setItem("cookiesAccepted", "true");
-      document.getElementById("cookie-banner").style.display = "none";
-    }
+      const eventsRes = await fetch(`https://api.ftcscout.org/rest/v1/teams/${teamNumber}/events/2024`);
+      const events = await eventsRes.json();
 
-    window.addEventListener("load", () => {
-      if (!localStorage.getItem("cookiesAccepted")) {
-        document.getElementById("cookie-banner").style.display = "block";
-      }
-    });
-
-    function showPopup(message) {
-      const popup = document.getElementById("popup");
-      popup.textContent = message;
-      popup.style.display = "block";
-      setTimeout(() => {
-        popup.style.display = "none";
-      }, 3000);
-    }
-
-    function nonNegative(value) {
-      let val = parseFloat(value);
-      return isNaN(val) || val < 0 ? 0 : val;
-    }
-
-    function consistencyLabel(deviation) {
-      if (deviation < 5) return "Extremely consistent";
-      if (deviation < 10) return "Consistent";
-      if (deviation < 30) return "Somewhat consistent";
-      if (deviation < 40) return "Somewhat inconsistent";
-      if (deviation < 50) return "Inconsistent";
-      return "Very inconsistent";
-    }
-
-    async function getTeamInsights() {
-      const teamNumber = document.getElementById("teamNumber").value.trim();
-      const results = document.getElementById("results");
-      results.innerHTML = "";
-
-      if (!teamNumber) {
-        alert("Please enter a team number.");
+      if (!events || events.length === 0) {
+        resultBox.innerHTML = `No events found for team ${teamNumber}`;
         return;
       }
 
-      try {
-        const nameQuery = `query { teamByNumber(number: ${teamNumber}) { name } }`;
-        const nameResp = await fetch("https://api.ftcscout.org/graphql", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: nameQuery })
-        });
-        const nameJson = await nameResp.json();
-        const teamName = nameJson?.data?.teamByNumber?.name || "Unknown Team";
+      const best = {
+        total: { value: -1, event: '' },
+        auto: { value: -1, event: '' },
+        dc: { value: -1, event: '' },
+        endgame: { value: -1, event: '' }
+      };
 
-        const statsQuery = `query { teamByNumber(number: ${teamNumber}) { events(season: 2024) { event { end } stats { ... on TeamEventStats2024 { opr { totalPointsNp autoSpecimenPoints dcSpecimenPoints dcSamplePoints autoSamplePoints dcParkPoints } dev { totalPointsNp dcSpecimenPoints autoSpecimenPoints dcSamplePoints autoSamplePoints dcParkPoints } } } } } }`;
-        const statsResp = await fetch("https://api.ftcscout.org/graphql", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: statsQuery })
-        });
-        const statsJson = await statsResp.json();
+      for (const event of events) {
+        const eventCode = event.eventCode;
 
-        const events = statsJson?.data?.teamByNumber?.events || [];
-        const validEvents = events.filter(e => e.stats?.opr && e.stats?.dev);
-
-        if (validEvents.length === 0) {
-          results.innerHTML = "<div class='box'><p>No valid events with stats found for 2024.</p></div>";
-          return;
+        let matches;
+        try {
+          const matchRes = await fetch(`https://api.ftcscout.org/rest/v1/events/2024/${eventCode}/matches`);
+          matches = await matchRes.json();
+        } catch {
+          continue;
         }
 
-        const mostRecent = validEvents.sort((a, b) => (b.event.end || "").localeCompare(a.event.end || ""))[0];
-        const { opr, dev } = mostRecent.stats;
+        const scores = { total: [], auto: [], dc: [], endgame: [] };
 
-        const totalOPR = nonNegative(opr.totalPointsNp);
-        const autoOPR = nonNegative(opr.autoSpecimenPoints);
-        const teleopOPR = nonNegative(opr.dcSpecimenPoints);
-        const endgameOPR = nonNegative(opr.dcSamplePoints) + nonNegative(opr.autoSamplePoints) + nonNegative(opr.dcParkPoints);
+        for (const match of matches) {
+          if (!match.hasBeenPlayed || match.id >= 500) continue;
 
-        const specimenDev = nonNegative(dev.dcSpecimenPoints) + nonNegative(dev.autoSpecimenPoints);
-        const sampleDev = nonNegative(dev.dcSamplePoints) + nonNegative(dev.autoSamplePoints);
-        const parkDev = nonNegative(dev.dcParkPoints);
+          for (const color of ["red", "blue"]) {
+            const teams = match.teams
+              .filter(t => t.alliance.toLowerCase() === color && !t.noShow && !t.dq)
+              .map(t => parseInt(t.teamNumber));
+            if (teams.length !== 2) continue;
 
-        function specimenInsight() {
-          const avg = (autoOPR + teleopOPR) / 10;
-          const devVal = specimenDev / 10;
-          return `${consistencyLabel(specimenDev)}: ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} specimens/match`;
+            const score = match.scores[color];
+            scores.total.push({ team1: teams[0], team2: teams[1], result: score.totalPointsNp });
+            scores.auto.push({ team1: teams[0], team2: teams[1], result: score.autoPoints });
+            scores.dc.push({ team1: teams[0], team2: teams[1], result: score.dcPoints });
+            scores.endgame.push({ team1: teams[0], team2: teams[1], result: score.dcParkPoints });
+          }
         }
 
-        function sampleInsight() {
-          const points = nonNegative(opr.dcSamplePoints) + nonNegative(opr.autoSamplePoints);
-          const avg = points / 8;
-          const devVal = sampleDev / 8;
-          return `${consistencyLabel(sampleDev)}: ${Math.round(avg - devVal)}–${Math.round(avg + devVal)} samples/match`;
+        if (scores.total.length === 0) continue;
+
+        const allTeams = [...new Set(scores.total.flatMap(s => [s.team1, s.team2]))].sort((a, b) => a - b);
+        const teamIndex = allTeams.indexOf(teamNumber);
+        if (teamIndex === -1) continue;
+
+        function calculateMatrix(scoreList) {
+          const A = scoreList.map(s => allTeams.map(t => (t === s.team1 || t === s.team2 ? 1 : 0)));
+          const b = scoreList.map(s => s.result);
+          return solveLeastSquares(A, b);
         }
 
-        function parkInsight() {
-          const points = nonNegative(opr.dcParkPoints);
-          const level = points < 10 ? "Park" : points < 20 ? "Level 2 hang" : "Level 3 hang";
-          return `${consistencyLabel(parkDev)}: ${level}`;
+        const oprs = {
+          total: calculateMatrix(scores.total),
+          auto: calculateMatrix(scores.auto),
+          dc: calculateMatrix(scores.dc),
+          endgame: calculateMatrix(scores.endgame)
+        };
+
+        for (const key in oprs) {
+          if (oprs[key][teamIndex] > best[key].value) {
+            best[key].value = oprs[key][teamIndex];
+            best[key].event = await fetchEventName(eventCode);
+          }
         }
-
-        results.innerHTML = `
-          <div class="box">
-            <h2>Team ${teamNumber} – ${teamName}</h2>
-          </div>
-          <div class="box">
-            <h2>OPR Breakdown</h2>
-            <ul>
-              <li><strong>Total:</strong> ${totalOPR.toFixed(1)}</li>
-              <li><strong>Auto Specimen:</strong> ${autoOPR.toFixed(1)}</li>
-              <li><strong>TeleOp Specimen:</strong> ${teleopOPR.toFixed(1)}</li>
-              <li><strong>Endgame:</strong> ${endgameOPR.toFixed(1)}</li>
-            </ul>
-          </div>
-          <div class="box">
-            <h2>Consistency Insights</h2>
-            <ul>
-              <li>${specimenInsight()}</li>
-              <li>${sampleInsight()}</li>
-              <li>${parkInsight()}</li>
-            </ul>
-          </div>
-        `;
-
-        // Show popup when data loads
-        showPopup("Team statistics loaded successfully!");
-      } catch (error) {
-        results.innerHTML = `<div class='box'><p style="color:red;">Error: ${error.message}</p></div>`;
       }
+
+      resultBox.innerHTML = `
+        <h2>Team ${teamNumber} Best OPRs</h2>
+        <p><strong>Total:</strong> ${best.total.value.toFixed(2)} (${best.total.event})</p>
+        <p><strong>Auto:</strong> ${best.auto.value.toFixed(2)} (${best.auto.event})</p>
+        <p><strong>Tele-Op:</strong> ${best.dc.value.toFixed(2)} (${best.dc.event})</p>
+        <p><strong>Endgame:</strong> ${best.endgame.value.toFixed(2)} (${best.endgame.event})</p>
+      `;
+    }
+
+    async function fetchEventName(code) {
+      try {
+        const res = await fetch(`https://api.ftcscout.org/rest/v1/events/2024/${code}`);
+        const data = await res.json();
+        return data.name || code;
+      } catch {
+        return code;
+      }
+    }
+
+    // Basic pseudo-inverse solution using math.js (needed for matrix operations)
+    // Use CDN:
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.1/math.min.js";
+    script.onload = () => console.log("Math.js loaded.");
+    document.head.appendChild(script);
+
+    function solveLeastSquares(A, b) {
+      const mA = math.matrix(A);
+      const mb = math.matrix(b);
+      const pseudoInv = math.multiply(
+        math.inv(math.multiply(math.transpose(mA), mA)),
+        math.transpose(mA)
+      );
+      const result = math.multiply(pseudoInv, mb)._data;
+      return result;
     }
   </script>
 </body>
