@@ -60,7 +60,7 @@
       border-radius: 8px;
       margin: 1rem 0;
       max-width: 90%;
-      width: 800px;
+      width: 900px;
       word-wrap: break-word;
       text-align: center;
     }
@@ -91,23 +91,10 @@
       background-color: #2c2c2c;
     }
 
-    .red-cell {
-      background-color: rgba(255, 0, 0, 0.2);
-    }
-
-    .blue-cell {
-      background-color: rgba(0, 0, 255, 0.2);
-    }
-
-    .red-text {
-      color: #ff5252;
-      font-weight: bold;
-    }
-
-    .blue-text {
-      color: #82b1ff;
-      font-weight: bold;
-    }
+    .red-text { color: #ff5252; font-weight: bold; }
+    .blue-text { color: #82b1ff; font-weight: bold; }
+    .highlight-red { background-color: #AF1D1D !important; }
+    .highlight-blue { background-color: #1B57B3 !important; }
   </style>
 </head>
 <body>
@@ -123,124 +110,119 @@
   <script>
     async function fetchTeamData() {
       const teamNumber = parseInt(document.getElementById('teamInput').value.trim());
-      if (!teamNumber) {
-        alert('Please enter a valid team number.');
-        return;
-      }
+      if (!teamNumber) return alert('Please enter a valid team number.');
 
       const teamInfoBox = document.getElementById('teamInfo');
       const eventsContainer = document.getElementById('eventsContainer');
       teamInfoBox.style.display = 'block';
-      teamInfoBox.innerHTML = 'Loading team info...';
+      teamInfoBox.innerHTML = 'Loading...';
       eventsContainer.innerHTML = '';
 
       try {
-        const teamRes = await fetch(`https://api.ftcscout.org/rest/v1/teams/${teamNumber}`);
-        if (!teamRes.ok) throw new Error('Team not found.');
-        const teamData = await teamRes.json();
+        const teamData = await (await fetch(`https://api.ftcscout.org/rest/v1/teams/${teamNumber}`)).json();
+        const events = await (await fetch(`https://api.ftcscout.org/rest/v1/teams/${teamNumber}/events/2024`)).json();
 
         teamInfoBox.innerHTML = `
           <h2>Team Info</h2>
-          <p><span class="stat-label">Team Number:</span> ${teamData.number}</p>
-          <p><span class="stat-label">Name:</span> ${teamData.name || "N/A"}</p>
-          <p><span class="stat-label">School:</span> ${teamData.schoolName || "N/A"}</p>
-          <p><span class="stat-label">Rookie Year:</span> ${teamData.rookieYear || "N/A"}</p>
-          <p><span class="stat-label">City:</span> ${teamData.city || "N/A"}</p>
-          <p><span class="stat-label">State:</span> ${teamData.state || "N/A"}</p>
-          <p><span class="stat-label">Country:</span> ${teamData.country || "N/A"}</p>
+          <p><span class="stat-label">Number:</span> ${teamData.number}</p>
+          <p><span class="stat-label">Name:</span> ${teamData.name}</p>
+          <p><span class="stat-label">School:</span> ${teamData.schoolName}</p>
+          <p><span class="stat-label">Rookie Year:</span> ${teamData.rookieYear}</p>
+          <p><span class="stat-label">Location:</span> ${teamData.city}, ${teamData.state}, ${teamData.country}</p>
         `;
 
-        const eventsRes = await fetch(`https://api.ftcscout.org/rest/v1/teams/${teamNumber}/events/2024`);
-        const events = await eventsRes.json();
+        for (let event of events) {
+          const code = event.eventCode;
+          const name = await (await fetch(`https://api.ftcscout.org/rest/v1/events/2024/${code}`)).json();
 
-        if (!events.length) {
-          eventsContainer.innerHTML = '<div class="box">No events found for this team.</div>';
-          return;
-        }
+          const matches = await (await fetch(`https://api.ftcscout.org/rest/v1/events/2024/${code}/matches`)).json();
+          const played = matches.filter(m => m.hasBeenPlayed && m.id < 500);
 
-        for (const event of events) {
-          const eventCode = event.eventCode;
-          const eventName = await fetchEventName(eventCode);
-          const matches = await fetchEventMatches(eventCode);
-          if (!matches.length) continue;
+          const matrix = [];
+          const results = [];
+          const teams = new Set();
 
-          const filteredMatches = matches.filter(m =>
-            m.hasBeenPlayed &&
-            m.id < 500 &&
-            m.teams.some(t => t.teamNumber === teamNumber)
-          );
+          for (const m of played) {
+            const alliances = ['red', 'blue'];
+            for (let color of alliances) {
+              const t = m.teams.filter(team => team.alliance.toLowerCase() === color);
+              if (t.length === 2) {
+                const [t1, t2] = t.map(tt => tt.teamNumber);
+                matrix.push(Array.from(teams.add(t1).add(t2)).map(num => (num === t1 || num === t2) ? 1 : 0));
+                results.push(m.scores[color].totalPointsNp);
+              }
+            }
+          }
 
-          if (!filteredMatches.length) continue;
+          const teamList = Array.from(teams).sort((a,b) => a-b);
+          const A = matrix.map(row => teamList.map(team => row.includes(team) ? 1 : 0));
+          const b = results;
+          const x = solveOPR(A, b);
+          const OPR = {};
+          teamList.forEach((team, i) => OPR[team] = x[i]);
 
-          const eventBox = document.createElement('div');
-          eventBox.className = 'box';
-          eventBox.innerHTML = `<h2>${eventName}</h2>`;
-
+          const filtered = played.filter(m => m.teams.some(t => t.teamNumber === teamNumber));
           const table = document.createElement('table');
-          const thead = document.createElement('thead');
-          thead.innerHTML = `
-            <tr>
-              <th class="red-cell">Red 1</th>
-              <th class="red-cell">Red 2</th>
-              <th class="red-cell">Red Score</th>
-              <th>Winner</th>
-              <th class="blue-cell">Blue Score</th>
-              <th class="blue-cell">Blue 1</th>
-              <th class="blue-cell">Blue 2</th>
-            </tr>
+          table.innerHTML = `
+            <thead>
+              <tr>
+                <th>Red Score</th><th>Winner</th><th>Blue Score</th>
+                <th>Red 1</th><th>Red 2</th><th>Blue 1</th><th>Blue 2</th>
+                <th>Pred. Red</th><th>Pred. Blue</th><th>Pred. Winner</th>
+              </tr>
+            </thead>
           `;
-          table.appendChild(thead);
-
           const tbody = document.createElement('tbody');
 
-          for (const match of filteredMatches) {
-            const redTeams = match.teams.filter(t => t.alliance.toLowerCase() === 'red').map(t => t.teamNumber);
-            const blueTeams = match.teams.filter(t => t.alliance.toLowerCase() === 'blue').map(t => t.teamNumber);
-            const redScore = match.scores.red.totalPointsNp;
-            const blueScore = match.scores.blue.totalPointsNp;
-            const winner = redScore > blueScore ? 'Red' : blueScore > redScore ? 'Blue' : 'Tie';
-            const winnerClass = winner === 'Red' ? 'red-text' : winner === 'Blue' ? 'blue-text' : '';
+          for (let m of filtered) {
+            const red = m.teams.filter(t => t.alliance.toLowerCase() === 'red').map(t => t.teamNumber);
+            const blue = m.teams.filter(t => t.alliance.toLowerCase() === 'blue').map(t => t.teamNumber);
+            const rScore = m.scores.red.totalPointsNp;
+            const bScore = m.scores.blue.totalPointsNp;
+            const winner = rScore > bScore ? 'Red' : bScore > rScore ? 'Blue' : 'Tie';
+
+            const predR = Math.round((OPR[red[0]] || 0) + (OPR[red[1]] || 0));
+            const predB = Math.round((OPR[blue[0]] || 0) + (OPR[blue[1]] || 0));
+            const predWin = predR > predB ? `Red (${Math.round(predR / (predR + predB) * 100)}%)`
+                           : predB > predR ? `Blue (${Math.round(predB / (predR + predB) * 100)}%)`
+                           : 'Tie';
 
             const row = document.createElement('tr');
             row.innerHTML = `
-              <td class="red-cell">${redTeams[0] || 'N/A'}</td>
-              <td class="red-cell">${redTeams[1] || 'N/A'}</td>
-              <td class="red-cell red-text">${redScore}</td>
-              <td class="${winnerClass}">${winner}</td>
-              <td class="blue-cell blue-text">${blueScore}</td>
-              <td class="blue-cell">${blueTeams[0] || 'N/A'}</td>
-              <td class="blue-cell">${blueTeams[1] || 'N/A'}</td>
+              <td class="red-text">${rScore}</td>
+              <td class="${winner === 'Red' ? 'red-text' : winner === 'Blue' ? 'blue-text' : ''}">${winner}</td>
+              <td class="blue-text">${bScore}</td>
+              <td class="${red[0] === teamNumber ? 'highlight-red' : ''}">${red[0]}</td>
+              <td class="${red[1] === teamNumber ? 'highlight-red' : ''}">${red[1]}</td>
+              <td class="${blue[0] === teamNumber ? 'highlight-blue' : ''}">${blue[0]}</td>
+              <td class="${blue[1] === teamNumber ? 'highlight-blue' : ''}">${blue[1]}</td>
+              <td>${predR}</td>
+              <td>${predB}</td>
+              <td class="${predR > predB ? 'red-text' : predB > predR ? 'blue-text' : ''}">${predWin}</td>
             `;
             tbody.appendChild(row);
           }
 
           table.appendChild(tbody);
-          eventBox.appendChild(table);
-          eventsContainer.appendChild(eventBox);
+          const box = document.createElement('div');
+          box.className = 'box';
+          box.innerHTML = `<h2>${name.name}</h2>`;
+          box.appendChild(table);
+          eventsContainer.appendChild(box);
         }
-      } catch (err) {
-        teamInfoBox.innerHTML = `<p>Error: ${err.message}</p>`;
+      } catch (e) {
+        console.error(e);
+        teamInfoBox.innerHTML = `<div class="box">Error loading team data.</div>`;
       }
     }
 
-    async function fetchEventName(eventCode) {
-      try {
-        const res = await fetch(`https://api.ftcscout.org/rest/v1/events/2024/${eventCode}`);
-        const data = await res.json();
-        return data.name || eventCode;
-      } catch {
-        return eventCode;
-      }
-    }
-
-    async function fetchEventMatches(eventCode) {
-      try {
-        const res = await fetch(`https://api.ftcscout.org/rest/v1/events/2024/${eventCode}/matches`);
-        return await res.json();
-      } catch {
-        return [];
-      }
+    function solveOPR(A, b) {
+      const AT = A[0].map((_, i) => A.map(row => row[i]));
+      const ATA = AT.map(row => A[0].map((_, j) => row.reduce((sum, val, k) => sum + val * A[k][j], 0)));
+      const ATb = AT.map(row => row.reduce((sum, val, i) => sum + val * b[i], 0));
+      return math.lusolve(ATA, ATb).map(x => x[0]);
     }
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.1/math.min.js"></script>
 </body>
 </html>
