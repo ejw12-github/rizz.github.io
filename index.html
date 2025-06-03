@@ -9,19 +9,24 @@
       background-color: #121212;
       color: #e0e0e0;
       font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 2rem;
+      justify-content: flex-start;
+      padding-top: 40px;
+      text-align: center;
     }
 
     h1 {
       color: #bb86fc;
+      margin-bottom: 1rem;
     }
 
     input, button {
       padding: 10px;
-      margin: 1rem 0;
+      margin: 0.5rem;
       font-size: 1rem;
       border-radius: 5px;
       border: none;
@@ -30,6 +35,7 @@
     input {
       background-color: #1f1f1f;
       color: white;
+      width: 200px;
     }
 
     button {
@@ -42,14 +48,24 @@
       background-color: #00bfa5;
     }
 
-    .result {
+    .box {
       background-color: #1e1e1e;
-      padding: 1rem;
+      padding: 1rem 1.5rem;
       border-radius: 8px;
       margin-top: 1.5rem;
-      width: 100%;
       max-width: 600px;
+      width: 90%;
       word-wrap: break-word;
+      text-align: left;
+    }
+
+    .box h2 {
+      color: #bb86fc;
+    }
+
+    .stat-label {
+      font-weight: bold;
+      color: #90caf9;
     }
   </style>
 </head>
@@ -57,17 +73,51 @@
   <h1>FTC Best OPR Checker</h1>
   <input type="number" id="teamInput" placeholder="Enter team number" />
   <button onclick="checkOPR()">Check OPR</button>
-  <div id="result" class="result" style="display:none;"></div>
+
+  <div id="teamInfo" class="box" style="display:none;"></div>
+  <div id="result" class="box" style="display:none;"></div>
 
   <script>
     async function checkOPR() {
       const teamNumber = parseInt(document.getElementById('teamInput').value);
+      const teamInfoBox = document.getElementById('teamInfo');
       const resultBox = document.getElementById('result');
-      resultBox.style.display = 'block';
-      resultBox.innerHTML = 'Loading...';
 
-      const eventsRes = await fetch(`https://api.ftcscout.org/rest/v1/teams/${teamNumber}/events/2024`);
-      const events = await eventsRes.json();
+      teamInfoBox.style.display = 'block';
+      resultBox.style.display = 'block';
+      teamInfoBox.innerHTML = 'Loading team info...';
+      resultBox.innerHTML = 'Loading OPR stats...';
+
+      // Fetch team info
+      let teamData;
+      try {
+        const res = await fetch(`https://api.ftcscout.org/rest/v1/teams/${teamNumber}`);
+        teamData = await res.json();
+      } catch {
+        teamInfoBox.innerHTML = 'Error fetching team data.';
+        return;
+      }
+
+      teamInfoBox.innerHTML = `
+        <h2>Team Info</h2>
+        <p><span class="stat-label">Team Number:</span> ${teamNumber}</p>
+        <p><span class="stat-label">Name:</span> ${teamData.name || "N/A"}</p>
+        <p><span class="stat-label">School:</span> ${teamData.school || "N/A"}</p>
+        <p><span class="stat-label">Rookie Year:</span> ${teamData.rookieYear || "N/A"}</p>
+        <p><span class="stat-label">City:</span> ${teamData.city || "N/A"}</p>
+        <p><span class="stat-label">State:</span> ${teamData.state || "N/A"}</p>
+        <p><span class="stat-label">Country:</span> ${teamData.country || "N/A"}</p>
+      `;
+
+      // Get events
+      let events;
+      try {
+        const res = await fetch(`https://api.ftcscout.org/rest/v1/teams/${teamNumber}/events/2024`);
+        events = await res.json();
+      } catch {
+        resultBox.innerHTML = 'Error fetching events.';
+        return;
+      }
 
       if (!events || events.length === 0) {
         resultBox.innerHTML = `No events found for team ${teamNumber}`;
@@ -83,11 +133,10 @@
 
       for (const event of events) {
         const eventCode = event.eventCode;
-
         let matches;
         try {
-          const matchRes = await fetch(`https://api.ftcscout.org/rest/v1/events/2024/${eventCode}/matches`);
-          matches = await matchRes.json();
+          const res = await fetch(`https://api.ftcscout.org/rest/v1/events/2024/${eventCode}/matches`);
+          matches = await res.json();
         } catch {
           continue;
         }
@@ -139,11 +188,11 @@
       }
 
       resultBox.innerHTML = `
-        <h2>Team ${teamNumber} Best OPRs</h2>
-        <p><strong>Total:</strong> ${best.total.value.toFixed(2)} (${best.total.event})</p>
-        <p><strong>Auto:</strong> ${best.auto.value.toFixed(2)} (${best.auto.event})</p>
-        <p><strong>Tele-Op:</strong> ${best.dc.value.toFixed(2)} (${best.dc.event})</p>
-        <p><strong>Endgame:</strong> ${best.endgame.value.toFixed(2)} (${best.endgame.event})</p>
+        <h2>Best OPR Stats</h2>
+        <p><span class="stat-label">Total OPR:</span> ${best.total.value.toFixed(2)} (${best.total.event})</p>
+        <p><span class="stat-label">Auto OPR:</span> ${best.auto.value.toFixed(2)} (${best.auto.event})</p>
+        <p><span class="stat-label">Tele-Op OPR:</span> ${best.dc.value.toFixed(2)} (${best.dc.event})</p>
+        <p><span class="stat-label">Endgame OPR:</span> ${best.endgame.value.toFixed(2)} (${best.endgame.event})</p>
       `;
     }
 
@@ -157,11 +206,9 @@
       }
     }
 
-    // Basic pseudo-inverse solution using math.js (needed for matrix operations)
-    // Use CDN:
+    // Load Math.js for matrix operations
     const script = document.createElement('script');
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.1/math.min.js";
-    script.onload = () => console.log("Math.js loaded.");
     document.head.appendChild(script);
 
     function solveLeastSquares(A, b) {
@@ -171,8 +218,7 @@
         math.inv(math.multiply(math.transpose(mA), mA)),
         math.transpose(mA)
       );
-      const result = math.multiply(pseudoInv, mb)._data;
-      return result;
+      return math.multiply(pseudoInv, mb)._data;
     }
   </script>
 </body>
