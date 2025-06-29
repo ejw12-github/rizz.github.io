@@ -2,95 +2,120 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Minecraft Tellraw Generator</title>
+  <title>FTC Team Stats</title>
   <style>
     body {
-      font-family: sans-serif;
-      padding: 20px;
-      background-color: #1e1e1e;
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f4f4f4;
+      color: #333;
+    }
+    h1, h2 {
+      color: #004080;
+    }
+    input, button {
+      padding: 0.5rem;
+      margin-right: 1rem;
+    }
+    button {
+      background-color: #007bff;
       color: white;
+      border: none;
+      cursor: pointer;
     }
-    textarea, input, button {
-      width: 100%;
-      margin-top: 10px;
-      padding: 10px;
-      font-family: monospace;
+    button:hover {
+      background-color: #0056b3;
     }
-    #output {
-      white-space: pre-wrap;
-      background: #2e2e2e;
-      padding: 10px;
-      border-radius: 5px;
-      margin-top: 10px;
+    pre {
+      background-color: #fff;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      overflow-x: auto;
     }
   </style>
 </head>
 <body>
+  <h1>FTC Team Stats (2024)</h1>
+  <input type="text" id="teamInput" placeholder="Enter team number">
+  <button onclick="fetchTeamData()">Get Stats</button>
+  <div id="output"></div>
 
-<h1>Minecraft Tellraw Generator</h1>
-<label for="inputText">Enter text with color codes (e.g., &4&lHello &rWorld):</label>
-<textarea id="inputText" rows="4" placeholder="&4&lHello &rWorld"></textarea>
-<button onclick="generateTellraw()">Generate /tellraw</button>
-
-<h2>Output:</h2>
-<div id="output"></div>
-
-<script>
-const colorMap = {
-  '0': 'black',     '1': 'dark_blue',   '2': 'dark_green', '3': 'dark_aqua',
-  '4': 'dark_red',  '5': 'dark_purple', '6': 'gold',       '7': 'gray',
-  '8': 'dark_gray', '9': 'blue',        'a': 'green',      'b': 'aqua',
-  'c': 'red',       'd': 'light_purple','e': 'yellow',     'f': 'white'
-};
-
-function generateTellraw() {
-  const input = document.getElementById('inputText').value;
-  const output = [];
-  let current = { text: "", color: "white" };
-  let formats = { bold: false, italic: false, underlined: false, strikethrough: false };
-
-  function pushCurrent() {
-    if (current.text) {
-      output.push({ ...current, ...formats });
-      current.text = "";
-    }
-  }
-
-  let i = 0;
-  while (i < input.length) {
-    if (input[i] === '&' && i + 1 < input.length) {
-      const code = input[i + 1].toLowerCase();
-      i += 2;
-
-      if (colorMap[code]) {
-        pushCurrent();
-        current.color = colorMap[code];
-        formats = { bold: false, italic: false, underlined: false, strikethrough: false };
-      } else if (code === 'l') {
-        formats.bold = true;
-      } else if (code === 'o') {
-        formats.italic = true;
-      } else if (code === 'n') {
-        formats.underlined = true;
-      } else if (code === 'm') {
-        formats.strikethrough = true;
-      } else if (code === 'r') {
-        pushCurrent();
-        current.color = "white";
-        formats = { bold: false, italic: false, underlined: false, strikethrough: false };
-      } else {
-        current.text += '&' + code;
+  <script>
+    async function fetchTeamData() {
+      const team = document.getElementById('teamInput').value.trim();
+      const output = document.getElementById('output');
+      if (!team) {
+        output.innerHTML = '<p>Please enter a team number.</p>';
+        return;
       }
-    } else {
-      current.text += input[i++];
+
+      output.innerHTML = '<p>Fetching data...</p>';
+
+      try {
+        const quickStatsUrl = `https://api.ftcscout.org/rest/v1/teams/${team}/quick-stats?season=2024`;
+        const teamUrl = `https://api.ftcscout.org/rest/v1/teams/${team}/`;
+        const eventUrl = `https://api.ftcscout.org/rest/v1/teams/${team}/events/2024`;
+
+        const [quickRes, teamRes, eventRes] = await Promise.all([
+          fetch(quickStatsUrl),
+          fetch(teamUrl),
+          fetch(eventUrl)
+        ]);
+
+        if (!quickRes.ok || !teamRes.ok || !eventRes.ok) {
+          throw new Error("Failed to fetch data from one or more endpoints.");
+        }
+
+        const quickStats = await quickRes.json();
+        const teamInfo = await teamRes.json();
+        const events = await eventRes.json();
+
+        const ordinal = (n) => {
+          if (11 <= (n % 100) && (n % 100) <= 13) return n + 'th';
+          switch (n % 10) {
+            case 1: return n + 'st';
+            case 2: return n + 'nd';
+            case 3: return n + 'rd';
+            default: return n + 'th';
+          }
+        };
+
+        const percent = (rank) => (((quickStats.count - rank) / quickStats.count) * 100).toFixed(2);
+
+        let html = `
+          <h2>${team} - ${teamInfo.name}</h2>
+          <p><strong>School:</strong> ${teamInfo.schoolName}</p>
+          <p><strong>Location:</strong> ${teamInfo.city}, ${teamInfo.state}, ${teamInfo.country}</p>
+          <p><strong>Rookie Year:</strong> ${teamInfo.rookieYear}</p>
+          ${teamInfo.website ? `<p><strong>Website:</strong> <a href="${teamInfo.website}" target="_blank">${teamInfo.website}</a></p>` : ''}
+          <h3>OPR Stats</h3>
+          <pre>
+Total: ${quickStats.tot.value.toFixed(2)} (${ordinal(quickStats.tot.rank)} / ${percent(quickStats.tot.rank)}%)
+Auto: ${quickStats.auto.value.toFixed(2)} (${ordinal(quickStats.auto.rank)} / ${percent(quickStats.auto.rank)}%)
+TeleOP: ${quickStats.dc.value.toFixed(2)} (${ordinal(quickStats.dc.rank)} / ${percent(quickStats.dc.rank)}%)
+Endgame: ${quickStats.eg.value.toFixed(2)} (${ordinal(quickStats.eg.rank)} / ${percent(quickStats.eg.rank)}%)
+          </pre>
+          <h3>Events</h3>
+        `;
+
+        if (Array.isArray(events) && events.length > 0) {
+          for (let e of events) {
+            const evRes = await fetch(`https://api.ftcscout.org/rest/v1/events/2024/${e.eventCode}/`);
+            const evData = await evRes.json();
+            html += `<p><strong>${evData.name}</strong> (${e.eventCode}) — ${evData.finished ? 'Completed' : evData.ongoing ? 'Ongoing' : 'Upcoming'}<br>
+            Location: ${evData.venue || 'N/A'}, ${evData.address || ''}<br>
+            Date: ${evData.start.replace(/-/g, '/')} - ${evData.end.replace(/-/g, '/')}</p>`;
+          }
+        } else {
+          html += `<p>No event data available for this team.</p>`;
+        }
+
+        output.innerHTML = html;
+      } catch (error) {
+        console.error(error);
+        output.innerHTML = `<p>Error fetching data. Make sure the team number is valid.</p>`;
+      }
     }
-  }
-  pushCurrent();
-
-  const tellraw = `/tellraw @a ${JSON.stringify({ text: "", extra: output })}`;
-  document.getElementById("output").textContent = tellraw;
-}
-</script>
-
+  </script>
 </body>
 </html>
